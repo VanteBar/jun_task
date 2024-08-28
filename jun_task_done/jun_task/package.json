@@ -1,0 +1,17 @@
+{
+  "name": "jun_task",
+  "version": "1.0.0",
+  "description": "",
+  "main": "back/main.js",
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  }
+}
