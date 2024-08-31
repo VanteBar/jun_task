@@ -21,8 +21,8 @@ const ajax = function (method, url, data, callback) {
 //------------------------------------ Основная логика ----------------------------------------------------//
 let limit = 100;    // <--- Количество загружаемых записей
 let start = 0;      // <--- Начальная запись, с которой будут грузится остальные
-
-let isFetching = false; // Флаг чтобы не делать множество запросов
+let end = false; // фдаг чтобы не прогружалось лишнее
+let isFetching = false; // флаг чтобы не делать множество запросов
 
 // 2)
 function listUpdate(data, append = true) {
@@ -43,28 +43,35 @@ function listUpdate(data, append = true) {
   // Ограниичение элементов до 100
   while (list.children.length > limit){
     if(append){
-      list.removeChild(list.firstChild) // Удаление сначала при прокрутке вниз
+      list.removeChild(list.firstChild) // удаление сначала при прокрутке вниз
     } else {
-      list.removeChild(list.lastChild) // Удаление с конца при прокрутке вверх
+      list.removeChild(list.lastChild) // удаление с конца при прокрутке вверх
     }
   }
 }
 
 // Функция для загрузки данных
 function loadData(newStart, append = true) {
-  if (isFetching) return; //
+  if (isFetching || end) return; //
   isFetching = true; // 
 
-  ajax("POST", "http://localhost:8081", { limit: limit, start: newStart }, (data) => { const prevHeight = list.scrollHeight;
+  ajax("POST", "http://localhost:8081", { limit: limit, start: newStart }, (data) => { 
+    if (data.rows.length < limit){
+      end = true; // если данных меньше лимита
+    }
+    const prevHeight = list.scrollHeight;
     listUpdate(data, append);
 
     if(append){
-      // После того как прокрутили вниз, скролл идет наверх
-      list.scrollTop = list.scrollHeight = list.clientHeight;
+      if(start === 0) {
+        list.scrollTop = 0; 
+      } else{
+        // после того как прокрутили вниз, скролл идет наверх
+        list.scrollTop = list.scrollHeight - list.clientHeight;
+      }
     } else {
-      // Сколл идет вниз
+      // сколл идет вниз
       //const prevHeight = list.scrollHeight;
-      
       list.scrollTop+=list.scrollHeight - prevHeight;
     }
 
@@ -81,16 +88,16 @@ const onScroll = () => {
   const scrollHeight = list.scrollHeight;
   const offsetHeight = list.offsetHeight;
 
-  // Проверяем, если мы прокрутили вниз
+  // проверяем, если мы прокрутили вниз
   if (scrollTop + offsetHeight >= scrollHeight - 15 && !isFetching) {
       console.log('Конец списка');
-      loadData(start + limit, true);     // Загружаем новые данные
+      loadData(start + limit, true);     // загружаем новые данные
   }
 
   //
   if (scrollTop <= 15 && !isFetching && start > 0) {
     console.log('Начало списка');
-    loadData(start - limit, false);     // Загружаем новые данные
+    loadData(start - limit, false);  
     console.log('start - limit = ', start - limit);
 }
 
