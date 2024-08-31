@@ -21,20 +21,24 @@ const ajax = function (method, url, data, callback) {
 //------------------------------------ Основная логика ----------------------------------------------------//
 let limit = 100;    // <--- Количество загружаемых записей
 let start = 0;      // <--- Начальная запись, с которой будут грузится остальные
-let end = false; // фдаг чтобы не прогружалось лишнее
+/*let end = false; // фдаг чтобы не прогружалось лишнее+*/
 let isFetching = false; // флаг чтобы не делать множество запросов
+let buffer = [];
 
 // 2)
-function listUpdate(data, append = true) {
+function listUpdate(data) {
+  list.innerHTML = '';
   const fragment = document.createDocumentFragment(); //
 
-  data.rows.forEach((element) => {
+  data.forEach((element) => {
     const li = document.createElement("li");
     li.innerHTML = `<p> id:${element.TrackId}</p> <p>${element.Name}</p>`;
     fragment.appendChild(li);
   });
 
-  if (append){
+  list.appendChild(fragment);
+
+  /*if (append){
     list.appendChild(fragment); //
   } else {
     list.insertBefore(fragment, list.firstChild); //
@@ -47,16 +51,18 @@ function listUpdate(data, append = true) {
     } else {
       list.removeChild(list.lastChild) // удаление с конца при прокрутке вверх
     }
-  }
+  }*/
 }
 
 // Функция для загрузки данных
-function loadData(newStart, append = true) {
-  if (isFetching || end) return; //
+function loadData(newStart, callback) {
+  if (isFetching) return; //
   isFetching = true; // 
 
-  ajax("POST", "http://localhost:8081", { limit: limit, start: newStart }, (data) => { 
-    if (data.rows.length < limit){
+  ajax("POST", "http://localhost:8081", { limit: limit, start: newStart }, (data) => { isFetching=false;
+    callback(data.rows);
+    
+    /*if (data.rows.length < limit){
       end = true; // если данных меньше лимита
     }
     const prevHeight = list.scrollHeight;
@@ -76,9 +82,19 @@ function loadData(newStart, append = true) {
     }
 
     start = newStart;
-    isFetching = false;
-
+    isFetching = false;*/
   });
+}
+
+//
+function loadAndBuffer(){
+  loadData(start, (data) => {
+    listUpdate(data); //
+    start += limit;
+    loadData(start, (nextData) => {
+      buffer = nextData; //
+    })
+  })
 }
 
 
@@ -91,15 +107,23 @@ const onScroll = () => {
   // проверяем, если мы прокрутили вниз
   if (scrollTop + offsetHeight >= scrollHeight - 15 && !isFetching) {
       console.log('Конец списка');
+      if(buffer.length>0){
+        listUpdate(buffer); //
+        start+=limit;
+        loadData(start, (nextData) => {
+          buffer = nextData; // след порция в буффер
+        });
+        list.scrollTop = 0;
+      }
       loadData(start + limit, true);     // загружаем новые данные
   }
 
   //
-  if (scrollTop <= 15 && !isFetching && start > 0) {
+  /*if (scrollTop <= 15 && !isFetching && start > 0) {
     console.log('Начало списка');
     loadData(start - limit, false);  
     console.log('start - limit = ', start - limit);
-}
+}*/
 
 };
 
@@ -107,7 +131,7 @@ const onScroll = () => {
 list.addEventListener('scroll', onScroll);
 
 //
-loadData(start);
+loadAndBuffer()
 //---------------------------------------------------------------------------------------------------------//
 
 //ajax("POST", "http://localhost:8081", { limit: limit, start: start }, listUpdate);
